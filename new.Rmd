@@ -1,0 +1,1006 @@
+---
+title: "Calories Burnt Prediction"
+author: "Sunita"
+output:
+  pdf_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+\INTRODUCTION \Background
+
+Calorie is a unit of heat energy. Health and fitness are becoming
+increasingly important to individuals and society as a whole. As people
+seek to live healthier lifestyles, they are turning to wearable devices
+and fitness trackers to monitor their physical activity and track their
+progress. One important metric that these devices track is the number of
+calories burnt during physical activity. Accurately predicting calorie
+burn can help individuals set and achieve fitness goals and can also
+inform health coaching and wellness tracking programs . The motivation
+for this research is to develop a model that can accurately predict
+calorie burn during physical activity. This has potential applications
+in a range of settings, including personalized health coaching, fitness
+tracking, and wellness programs. By developing an accurate calorie burn
+prediction model, we can help individuals make more informed decisions
+about their physical activity and improve their overall health and
+well-being
+
+\PROJECT OBJECTIVE\
+
+The objective of a calories burned prediction model is to estimate the
+number of calories an individual is likely to burn during a specific
+physical activity based on various input features. The goal is to create
+a model that can accurately predict calorie expenditure, considering
+factors such as user characteristics, activity details, and health
+metrics.
+
+\*\DATA
+
+The dataset was collected from \*\Kaggle, a popular platform for data
+scientists and machine learning practitioners to access and share
+datasets.
+
+In this work, the dataset contained over 15,000 records and 7
+variables. 1. User_ID: Unique identifier for each user (integer). 2.
+Gender: Gender of the user (character: "male" or "female"). 3. Age: Age
+of the user (integer). 4. Height: Height of the user (integer). 5.
+Weight: Weight of the user (integer). 6. Duration: Duration of the
+activity (integer). 7. Heart_Rate: Heart rate of the user during the
+activity (integer). 8. Body_Temp: Body temperature of the user during
+the activity (numeric). 9. Calories: Number of calories burned during
+the activity (integer).
+
+---
+title: "R Markdown Tips and Tricks"
+output: html_document
+---
+```{r setup, include=FALSE}
+
+options(repos = c(CRAN = "https://cran.r-project.org"))
+
+# Install the psych package if not already installed
+if (!requireNamespace("psych", quietly = TRUE)) {
+  install.packages("psych")
+}
+library(psych)
+
+```
+
+
+```{r echo=TRUE}
+knitr::include_graphics("C:\\Users\\sunit\\OneDrive\\Desktop\\My Project\\Attributes_of_calori_burnt_prediction.jpeg")
+```
+
+```{r echo=TRUE}
+knitr::include_graphics("C:\\Users\\sunit\\OneDrive\\Desktop\\My Project\\functions.jpeg")
+```
+
+```{r echo=TRUE}
+rm(list = ls())
+```
+
+```{r echo=TRUE}
+library(tidyverse)
+library(DescTools)
+library(zoo)
+library(ggpubr)
+
+```
+
+### **Importing and viewing the dataset:**
+
+```{r echo=TRUE}
+df = read.csv("exercise.csv")
+df=as.data.frame(df)
+View(df)
+df %>% head() %>% knitr::kable()
+```
+
+```{r echo=TRUE}
+str(df)
+```
+
+### **Checking the number of missing values:**
+
+```{r echo=TRUE}
+na_count = sapply(df, function(x) sum(length(which(is.na(x)))))
+na_count = data.frame(na_count)
+na_count %>% knitr::kable()
+
+```
+
+#### *Since there are no missing values , we can proceed with our analysis*
+
+### **Summary Measures:**
+
+```{r echo=TRUE}
+# Install and load the psych package
+install.packages("psych")
+library(psych)
+
+# Use describe() to get detailed descriptive statistics
+describe(df)
+```
+
+```{r echo=TRUE}
+# Load the ggplot2 package
+library(ggplot2)
+
+# Create a count plot
+ggplot(df, aes(x = Gender)) +
+  geom_bar() +
+  ggtitle("Count Plot of Gender") +
+  xlab("Gender") +
+  ylab("Count")
+
+```
+
+Roughly balanced gender distribution
+
+```{r echo=TRUE}
+gender_counts <- table(df$Gender)
+print(gender_counts)
+```
+
+```{r echo=TRUE}
+
+df$Gender <- ifelse(df$Gender == "male", 0, 1)
+
+```
+
+```{r echo=TRUE}
+# Calculate the correlation matrix
+correlation_matrix <- cor(df[2:9])
+
+# Print the correlation matrix
+print(correlation_matrix)
+```
+
+```{r echo=TRUE}
+correlation <- cor(df[2:9])
+install.packages("viridis")
+install.packages("corrplot")
+# Set up the plotting area
+par(mfrow=c(1,1), mar=c(5, 4, 2, 2))
+
+# Create a heatmap using the 'heatmap' function
+heatmap(correlation, 
+        col = viridis::viridis(100),  # You can choose a different color palette
+        main = 'Correlation Heatmap',
+        xlab = 'Variables',
+        ylab = 'Variables',
+        cex.axis = 0.8,
+        cex.main = 1.2,
+        margins = c(12, 9))
+
+# Annotate the heatmap using the 'corrplot' package
+library(corrplot)
+corrplot(correlation, 
+         method = 'color', 
+         col = viridis::viridis(100),  # Use the same color palette as the heatmap
+         addCoef.col = 'black',
+         number.cex = 0.7,
+         title = 'Correlation Heatmap')
+
+# Adjust the layout
+layout(matrix(c(1, 2), nrow = 1, byrow = TRUE), widths = c(4, 1))
+
+# Show the plot
+```
+
+-   **Gender:**
+    -   Strong negative correlation with height (-0.71) and weight
+        (-0.78).
+    -   Indicates females generally have lower height and weight.
+-   **Age:**
+    -   Positive correlation with calories (0.15).
+    -   Suggests older individuals burn more calories during activities.
+-   **Duration:**
+    -   Strong positive correlation with calories (0.96).
+    -   Longer exercise durations associated with higher calorie burn.
+    -   High correlation with heart rate (0.85) and body temperature
+        (0.90).
+-   **Heart Rate:**
+    -   Strong positive correlation with body temperature (0.77).
+    -   Increase in heart rate linked to higher body temperature.
+    -   High correlation with duration (0.85) and calories (0.90).
+-   **Body Temperature:**
+    -   Strong positive correlation with heart rate (0.77) and duration
+        (0.90).
+    -   Indicates higher body temperatures during activities with longer
+        durations and higher heart rates.
+-   **Weight and Height:**
+    -   Strong positive relationship (correlation of 0.96).
+    -   Indicates a strong positive association between weight and
+        height.
+-   **Calories:**
+    -   Strongly associated with duration (0.96) and heart rate (0.90).
+    -   Various factors, including exercise duration and heart rate,
+        strongly linked to calorie burn during physical activities.
+
+### **Histogram of certain columns:**
+
+```{r echo=TRUE}
+par(mfrow = c(3, 2), bg = "bisque1")
+col_id = c(3:9)
+for(j in 1:length(col_id))
+{
+  hist(df[, col_id[j]], col = "lightblue", 
+       border = "deeppink3", freq = F,
+       main = paste("Histogram of ", colnames(df[,col_id])[j]),
+       xlab = paste(colnames(df[,col_id][j])),
+       ylab = "Density")
+}
+
+```
+
+### \*\* Boxplot of certain columns\*\*
+
+```{r echo=TRUE}
+par(mfrow = c(3, 2), bg = "bisque1")
+col_id = c(3:9)
+for(j in 1:length(col_id))
+{
+  boxplot(df[,col_id[j]], col = "lightblue", 
+       border = "deeppink3", freq = F,
+       main = paste("Boxplot of ", colnames(df[,col_id])[j]),
+       xlab = paste(colnames(df[,col_id][j])),
+       ylab = "Density")
+}
+```
+
+#OUTLIERS FOR HEIGHT
+
+```{r echo=TRUE}
+# Calculate IQR
+data=df$Height
+q1 <- quantile(data, 0.25)
+q3 <- quantile(data, 0.75)
+iqr <- q3 - q1
+iqr
+# Define a threshold for outliers
+threshold <- 1.5 * iqr
+
+# Identify outliers
+outliers <- data[data < (q1 - threshold) | data > (q3 + threshold)]
+outliers
+```
+
+The average height for Indian men is 5.8 feet (177 cm), and that for
+women is 5.3 feet (162 cm) the height may differ,they are indeed genuine
+data points, it makes sense to retain them.
+
+#OUTLIERS FOR WEIGHT
+
+```{r echo=TRUE}
+# Calculate IQR
+data=df$Weight
+q1 <- quantile(data, 0.25)
+q3 <- quantile(data, 0.75)
+iqr <- q3 - q1
+iqr
+# Define a threshold for outliers
+threshold <- 1.5 * iqr
+
+# Identify outliers
+outliers <- data[data < (q1 - threshold) | data > (q3 + threshold)]
+outliers
+```
+
+Healthy Weight: 65kg to 75kg. Overweight: 75kg to 95kg. Obese: 95kg to
+125kg. Very Obese: More than 125kg They are indeed genuine data points,
+it makes sense to retain them.these are the weights of obese
+
+#OUTLIERS FOR Heart_rate
+
+```{r echo=TRUE}
+# Calculate IQR
+data=df$Heart_Rate
+q1 <- quantile(data, 0.25)
+q3 <- quantile(data, 0.75)
+iqr <- q3 - q1
+iqr
+# Define a threshold for outliers
+threshold <- 1.5 * iqr
+
+# Identify outliers
+outliers <- data[data < (q1 - threshold) | data > (q3 + threshold)]
+
+outliers
+```
+
+A normal resting heart rate should be between 60 to 100 beats per
+minute, but it can vary from minute to minute. Our age and general
+health can also affect our pulse rate, so it's important to remember
+that a 'normal' pulse can vary from person to person. Yes, it's normal
+for our heart rate to increase to 130 to 150 beats per minute or more
+when we exercise -- this is because your heart is working to pump more
+oxygen-rich blood around your body.
+
+#OUTLIERS FOR Body Temperature
+
+```{r echo=TRUE}
+# Calculate IQR
+data=df$Body_Temp
+q1 <- quantile(data, 0.25)
+q3 <- quantile(data, 0.75)
+iqr <- q3 - q1
+iqr
+# Define a threshold for outliers
+threshold <- 1.5 * iqr
+
+# Identify outliers
+outliers <- data[data < (q1 - threshold) | data > (q3 + threshold)]
+outliers
+```
+
+The average body temperature is 37 C. A high-grade fever is present when
+the oral temperature is above 38.5°C but here we are gettting outliers
+below 38.5 ,that is quiet normal so,we will not drop these data points
+
+#OUTLIERS FOR CALORIES
+
+```{r echo=TRUE}
+# Calculate IQR
+data=df$Calories
+q1 <- quantile(data, 0.25)
+q3 <- quantile(data, 0.75)
+iqr <- q3 - q1
+iqr
+# Define a threshold for outliers
+threshold <- 1.5 * iqr
+# Identify outliers
+outliers <- data[data < (q1 - threshold) | data > (q3 + threshold)]
+outliers
+```
+
+### **Histogram of Calories**
+
+```{r echo=TRUE}
+hist(df[,"Calories"], col = "lightblue", 
+       border = "deeppink3", freq = F,
+       main = paste("Histogram of Calories"),
+       xlab = 'Calories',
+       ylab = "Density")
+```
+
+#### *The data of Calories is positively skewed*
+
+### **Boxplot of Calories**
+
+```{r echo=TRUE}
+boxplot(df[,"Calories"], col = "lightblue", 
+       border = "deeppink3", freq = F,
+       main = "Boxplot of Calories")
+       
+```
+
+Linear Regression Linear regression models the relationships between at
+least one explanatory variable (independent) and an outcome variable
+(dependent). When there is one independent variable, the procedure is
+known as simple linear regression.
+
+Simple linear regression: Simple linear regression is defined by the
+linear function: Y= β0 + β1X + Ɛ  Y is the predicted value of the
+dependent variable (Y) for any given value of the independent variable
+(X).  β0 is the intercept, the predicted value of Y when the Xis 0. 
+β1is the regression coefficient -- how much we expect Y to change as X
+increases.  X is the independent variable.  Ɛis the error of the
+estimate, or how much variation there is in our estimate of the
+regression coefficient.
+
+Assumption of Data: We can use R to check that our data meet the four
+main assumption of linear model.
+
+1.  Independence of observation:The first assumption of linear
+    regression is the independence of observations. Independence means
+    that there is no relation between the independents variables. We
+    find correlation between independents variable and make sure they
+    are not too highly correlated. Because we have only one independent
+    variable at a time, we don't need to test for any hidden relation
+    between them.
+
+2.  Normality: The second assumption of Linear Regression is that the
+    residuals should follow a normal distribution. Once you obtain the
+    residuals from your model, this is relatively easy to test using
+    either a histogram or a QQ Plot. To check whether the dependent
+    variable follows the normal distribution we use histogram.
+
+3.  Linearity: The relationship between dependent and independent
+    variable must be linear. We can test this visually with a scatter
+    plot to see if the distribution of data point could be described
+    with a straight line.
+
+4.  Homoscedasticity: Homoscedasticity in a model means that the error
+    is constant along the values of the dependent variable. The best way
+    for checking homoscedasticity is to make a scatterplot with the
+    residuals against the dependent variable.
+
+Normality: Use the hist() function to test whether our dependent
+variable follows a normal distribution
+
+```         
+                                     DURATION
+```
+
+```{r echo=TRUE}
+# Set up the plot size
+options(repr.plot.width=6, repr.plot.height=6)
+
+# Load required libraries
+library(ggplot2)
+library(gridExtra)
+
+# Create a density plot using ggplot2
+density_plot <- ggplot(df, aes(x=Duration)) +
+  geom_density(fill="lightblue", color="red", alpha=0.7) +
+  labs(title="Distribution of Duration", x="Duration", y="Density")
+
+# Create a histogram using ggplot2
+hist_plot <- ggplot(df, aes(x=Duration)) +
+  geom_histogram(fill="lightblue", color="black", bins=30) +
+  labs(title="Distribution of Duration", x="Duration", y="Frequency")
+
+# Arrange the plots in a 1x2 grid
+grid.arrange(density_plot, hist_plot, ncol=2)
+
+# Show the plots
+```
+
+```{r echo=TRUE}
+qqnorm(df$Duration)
+qqline(df$Duration, col = 2)
+```
+
+Since, qq-plot is not that much close to the actual line , so the
+distribution of Duration the data may deviate from a normal
+distribution.
+
+S-shaped Curve: An S-shaped curve in the QQ plot may suggest skewness in
+the data.
+
+so, we can still proceed with the linear regression
+
+Linearity:We can check this by using scatterplot between Calories and
+Duration
+
+```{r echo=TRUE}
+#Response = Calories
+# Predictor = Duration
+ cor(df$Calories,df$Duration)
+df %>%
+  ggplot(aes(Duration, Calories)) + 
+  geom_point(pch = 20, col = "deeppink4", size = 2) +
+  geom_smooth(method = lm, se = F, col = "darkgoldenrod3") +
+  labs(title = "Scatterplot of Calories", 
+       subtitle = "Calories VS Duration") + 
+  xlab("Duration") + 
+  ylab("Calories") +
+  theme(panel.background = element_rect(fill = 'snow1'),
+        panel.grid.major = element_line(color = 'mistyrose'),
+        panel.grid.minor = element_line(color = 'mistyrose'))
+
+
+```
+
+Comment: Here, The correlation coefficient between Calories and Height
+is 0.9554205. Strong positive correlation with calories (0.96).Longer
+exercise durations associated with higher calorie burn. From the fitted
+scatterplot,the result is also verified.
+
+```{r echo=TRUE}
+plot(df$Calories,df$Duration,main = "Calories v/s  Duration",ylab = "Calories",xlab = "Duration",type = "h")
+```
+
+the relationship between Calories and Duration appears linear. We can
+proceed with linear regression.
+
+### **Fitting a linear model between Calories vs Duration\$**
+
+```{r echo=TRUE}
+model = df %>%
+  lm(formula =Calories~Duration)
+model %>% summary()
+```
+
+#### \*The linear regression model indicates a highly significant and strong relationship between Duration and Calories. Specifically:
+
+Intercept: Predicted Calories when Duration is zero is -21.86, but
+interpret cautiously.
+
+Duration (Slope): For each one-unit increase in Duration, predicted
+Calories increase by approximately 7.17 units.
+
+Statistical Significance: Both intercept and Duration are highly
+significant (p \< 2e-16).
+
+Model Fit: The model explains about 91.28% of the variability in
+Calories based on the high R-squared value.
+
+Overall Model Significance: The overall model is statistically
+significant, suggesting its usefulness in predicting Calories based on
+Duration.
+
+Check for homoscedasticity:
+
+Before proceeding with data visualization, we should make sure that our
+models fit the homoscedasticity assumption of the linear model. We
+should check that our model is actually a good fit for the data, and
+that we don't have large variation in the model error, by running this
+code:
+
+```{r echo=TRUE}
+par(mfrow=c(2,2))
+plot(lm(formula =df$Calories~df$Duration))
+```
+
+The most important thing to look for is that the red lines representing
+the mean of the residuals are all basically horizontal and centered
+around zero. This means there are no outliers or biases in the data that
+would make a linear regression invalid.
+
+Based on these residuals, we can say that our model meets the assumption
+of homoscedasticity.
+
+Visualize the result with graph:
+
+```{r echo=TRUE}
+
+Calories.graph<-ggplot(df, aes(x=Calories, y=Duration))+
+ geom_point()
+Calories.graph <- Calories.graph + geom_smooth(method="lm", 
+col="black")
+## `geom_smooth()` using formula = 'y ~ x'
+Calories.graph +
+ theme_bw() +
+ labs(title = "Reported Calories as a function of Duration",
+ x = "Duration",
+ y = "Calories score")+ 
+annotate(geom="text",label="Calories = -21.8597 + (7.1729*Duration)")
+```
+
+We found a significant relationship between Calories and Duration, with
+a 7.1729-unit increase in reported Calories for every 1 unit increase in
+Duration
+
+```         
+                                      HEIGHT
+```
+
+```{r echo=TRUE}
+# Set up the plot size
+options(repr.plot.width=6, repr.plot.height=6)
+
+# Load required libraries
+library(ggplot2)
+library(gridExtra)
+
+# Create a density plot using ggplot2
+density_plot <- ggplot(df, aes(x=Height)) +
+  geom_density(fill="lightblue", color="red", alpha=0.7) +
+  labs(title="Distribution of Height", x="Height", y="Density")
+
+# Create a histogram using ggplot2
+hist_plot <- ggplot(df, aes(x=Height)) +
+  geom_histogram(fill="lightblue", color="black", bins=30) +
+  labs(title="Distribution of Height", x="Height", y="Frequency")
+
+# Arrange the plots in a 1x2 grid
+grid.arrange(density_plot, hist_plot, ncol=2)
+
+# Show the plots
+```
+
+```{r echo=TRUE}
+qqnorm(df$Height)
+qqline(df$Height, col = 2)
+```
+
+Since, qq-plot is very much close to the actual line , so the
+distribution of Height in our data is normally distributed.😊
+
+The distribution of observations is bell-shaped, so we can proceed with
+the linear regression
+
+Linearity:We can check this by using scatterplot between Calories and
+Height
+
+```{r echo=TRUE}
+#Response = Calories
+# Predictor = Height
+ cor(df$Calories,df$Height)
+df %>%
+  ggplot(aes(Height, Calories)) + 
+  geom_point(pch = 20, col = "deeppink4", size = 2) +
+  geom_smooth(method = lm, se = F, col = "darkgoldenrod3") +
+  labs(title = "Scatterplot of Calories", 
+       subtitle = "Calories VS Height") + 
+  xlab("Height") + 
+  ylab("Calories") +
+  theme(panel.background = element_rect(fill = 'snow1'),
+        panel.grid.major = element_line(color = 'mistyrose'),
+        panel.grid.minor = element_line(color = 'mistyrose'))
+
+
+```
+
+Comment: Here, The correlation coefficient between Calories and Height
+is 0.01753677. That is, there's a weak positive correlation between
+these two variables. From the fitted scatterplot,the result
+is also verified.
+
+```{r echo=TRUE}
+plot(df$Calories,df$Height,main = "Calories v/s  Height",ylab = "Calories",xlab = "Height",type = "h")
+```
+
+Although the relationship between Calories and Height is a bit less
+clear, it still appears linear. We can proceed with linear regression.
+
+### **Fitting a linear model between Calories vs Height\$**
+
+```{r echo=TRUE}
+model = df %>%
+  lm(formula =Calories~Height)
+model %>% summary()
+```
+
+The linear regression model suggests a statistically significant but
+modest relationship between Height and Calories:
+
+Intercept: Predicted Calories when Height is zero is 76.14, but this
+might not have practical meaning.
+
+Height (Slope): For each one-unit increase in Height, predicted Calories
+increase by approximately 0.077 units.
+
+Statistical Significance: The relationship is statistically significant
+(p = 0.0317), but the p-value is higher compared to other models.
+
+Model Fit: The model has limited explanatory power (low R-squared),
+indicating that Height explains only a negligible portion of the
+variability in Calories.
+
+Overall Model Significance: The overall model is statistically
+significant, but the effect size is relatively small.
+
+Conclusion: While statistically significant, the practical impact of
+Height on predicting Calories appears limited. Consider exploring
+additional factors for a more comprehensive understanding of calorie
+prediction
+
+Check for homoscedasticity:
+
+Before proceeding with data visualization, we should make sure that our
+models fit the homoscedasticity assumption of the linear model. We
+should check that our model is actually a good fit for the data, and
+that we don't have large variation in the model error, by running this
+code:
+
+```{r echo=TRUE}
+par(mfrow=c(2,2))
+plot(lm(formula =df$Calories~df$Height))
+```
+
+The most important thing to look for is that the red lines representing
+the mean of the residuals are all basically horizontal and centered
+around zero. This means there are no outliers or biases in the data that
+would make a linear regression invalid.
+
+Based on these residuals, we can say that our model meets the assumption
+of homoscedasticity.
+
+Visualize the result with graph:
+
+```{r echo=TRUE}
+
+Calories.graph<-ggplot(df, aes(x=Calories, y=Height))+
+ geom_point()
+Calories.graph <- Calories.graph + geom_smooth(method="lm", 
+col="black")
+## `geom_smooth()` using formula = 'y ~ x'
+Calories.graph +
+ theme_bw() +
+ labs(title = "Reported Calories as a function of Height",
+ x = "Height",
+ y = "Calories score")+ 
+annotate(geom="text",label="Calories = 76.13730 + (0.07682*Height)")
+```
+
+We found a significant relationship between Calories and Height, with a
+0.07682-unit increase in reported Calories for every 1 unit increase in
+Height
+
+```         
+                                      Heart_Rate
+```
+
+```{r echo=TRUE}
+# Set up the plot size
+options(repr.plot.width=6, repr.plot.height=6)
+
+# Load required libraries
+library(ggplot2)
+library(gridExtra)
+
+# Create a density plot using ggplot2
+density_plot <- ggplot(df, aes(x=Heart_Rate)) +
+  geom_density(fill="lightblue", color="red", alpha=0.7) +
+  labs(title="Distribution of Heart_Rate", x="Heart_Rate", y="Density")
+
+# Create a histogram using ggplot2
+hist_plot <- ggplot(df, aes(x=Heart_Rate)) +
+  geom_histogram(fill="lightblue", color="black", bins=30) +
+  labs(title="Distribution of Heart_Rate", x="Heart_Rate", y="Frequency")
+
+# Arrange the plots in a 1x2 grid
+grid.arrange(density_plot, hist_plot, ncol=2)
+
+# Show the plots
+```
+
+```{r echo=TRUE}
+qqnorm(df$Heart_Rate)
+qqline(df$Heart_Rate, col = 'red')
+```
+
+Since, qq-plot deviates a little from the central line, so the
+distribution of Heart_Rate deviates a bit from the normal distribution.
+
+The distribution of observations is bell-shaped, so we can proceed with
+the linear regression
+
+Linearity:We can check this by using scatterplot between Calories and
+Heart_Rate
+
+```{r echo=TRUE}
+#Response = Calories
+# Predictor =Heart_Rate
+ cor(df$Calories,df$Heart_Rate)
+df %>%
+  ggplot(aes(Heart_Rate, Calories)) + 
+  geom_point(pch = 20, col = "deeppink4", size = 2) +
+  geom_smooth(method = lm, se = F, col = "darkgoldenrod3") +
+  labs(title = "Scatterplot of Calories", 
+       subtitle = "Calories VS Heart_Rate") + 
+  xlab("Heart_Rate") + 
+  ylab("Calories") +
+  theme(panel.background = element_rect(fill = 'snow1'),
+        panel.grid.major = element_line(color = 'mistyrose'),
+        panel.grid.minor = element_line(color = 'mistyrose'))
+
+
+```
+
+Comment: Here, The correlation coefficient between Calories and
+Heart_Rate is 0.8978821. That is, there's a strong positive correlation
+between these two variables. From the fitted scatterplot,the result
+is also verified.
+
+```{r echo=TRUE}
+plot(df$Calories,df$Heart_Rate,main = "Calories v/s  Heart_Rate",ylab = "Calories",xlab = "Heart_Rate",type = "h")
+```
+
+the relationship between Calories and Heart_Rate appears linear. We can
+proceed with linear regression.
+
+### **Fitting a linear model between Calories vs Heart_Rate\$**
+
+```{r echo=TRUE}
+model = df %>%
+  lm(formula =Calories~Heart_Rate)
+model %>% summary()
+```
+
+The linear regression model indicates a strong and statistically
+significant relationship between Heart_Rate and Calories. Specifically:
+
+Intercept: The estimated intercept is -469.41, representing the
+predicted Calories when Heart_Rate is zero. Interpretation of the
+intercept may not be meaningful in our context.
+
+Heart_Rate: For each one-unit increase in Heart_Rate, the predicted
+Calories increase by approximately 5.85 units.
+
+Statistical Significance: Both intercept and Heart_Rate coefficients are
+highly significant (p \< 2e-16), providing strong evidence against the
+null hypothesis that their values are zero.
+
+Model Fit: The model explains about 80.62% of the variability in
+Calories based on the R-squared value. The residuals have a standard
+deviation of 27.5, indicating the typical difference between observed
+and predicted values.
+
+Overall Model Significance: The F-statistic is very high (6.239e+04)
+with a small p-value (\<2.2e-16), indicating that the overall model is
+statistically significant.
+
+Conclusion: The linear regression model is a robust predictor of
+Calories based on Heart_Rate, and the strong statistical significance
+supports the assertion that the relationship is meaningful in the data.
+
+\*Check for homoscedasticity:
+
+Before proceeding with data visualization, we should make sure that our
+models fit the homoscedasticity assumption of the linear model. We
+should check that our model is actually a good fit for the data, and
+that we don't have large variation in the model error, by running this
+code:
+
+```{r echo=TRUE}
+par(mfrow=c(2,2))
+plot(lm(formula =df$Calories~df$Heart_Rate))
+```
+
+Based on these residuals, we can say that our model meets the assumption
+of homoscedasticity.
+
+Visualize the result with graph:
+
+```{r echo=TRUE}
+
+Calories.graph<-ggplot(df, aes(x=Calories, y=Heart_Rate))+
+ geom_point()
+Calories.graph <- Calories.graph + geom_smooth(method="lm", 
+col="black")
+## `geom_smooth()` using formula = 'y ~ x'
+Calories.graph +
+ theme_bw() +
+ labs(title = "Reported Calories as a function of Heart_Rate",
+ x = "Heart_Rate",
+ y = "Calories score")+ 
+annotate(geom="text",label="Calories = -469.40865 + (5.85172*Heart_Rate)")
+```
+
+We found a significant relationship between Calories and Heart_Rate.
+
+```         
+                                      BODY TEMPERATURE
+```
+
+```{r echo=TRUE}
+# Set up the plot size
+options(repr.plot.width=6, repr.plot.height=6)
+
+# Load required libraries
+library(ggplot2)
+library(gridExtra)
+
+# Create a density plot using ggplot2
+density_plot <- ggplot(df, aes(x=Body_Temp)) +
+  geom_density(fill="lightblue", color="red", alpha=0.7) +
+  labs(title="Distribution of Body temperature", x="Body_Temp", y="Density")
+
+# Create a histogram using ggplot2
+hist_plot <- ggplot(df, aes(x=Body_Temp)) +
+  geom_histogram(fill="lightblue", color="black", bins=30) +
+  labs(title="Distribution of Height", x="Body_Temp", y="Frequency")
+
+# Arrange the plots in a 1x2 grid
+grid.arrange(density_plot, hist_plot, ncol=2)
+
+# Show the plots
+```
+
+```{r echo=TRUE}
+qqnorm(df$Body_Temp)
+qqline(df$Body_Temp, col = 2)
+```
+
+Since, qq-plot deviates a little from the central line, so the
+distribution of Body_Temp deviates a bit from the normal distribution.😓
+
+The distribution of observations is approximately bell-shaped, so we can
+proceed with the linear regression
+
+Linearity:We can check this by using scatterplot between Calories and
+Body_Temp
+
+```{r echo=TRUE}
+#Response = Calories
+# Predictor = Body_Temp
+ cor(df$Calories,df$Body_Temp)
+df %>%
+  ggplot(aes(Body_Temp, Calories)) + 
+  geom_point(pch = 20, col = "deeppink4", size = 2) +
+  geom_smooth(method = lm, se = F, col = "darkgoldenrod3") +
+  labs(title = "Scatterplot of Calories", 
+       subtitle = "Calories VS Body_Temp") + 
+  xlab("Body_Temp") + 
+  ylab("Calories") +
+  theme(panel.background = element_rect(fill = 'snow1'),
+        panel.grid.major = element_line(color = 'mistyrose'),
+        panel.grid.minor = element_line(color = 'mistyrose'))
+
+
+```
+
+Comment: Here, The correlation coefficient between Calories and Height
+is 0.8245578. That is, there's a strong positive correlation between
+these two variables. From the fitted scatterplot,the result
+is also verified.
+
+```{r echo=TRUE}
+plot(df$Calories,df$Height,main = "Calories v/s  Body_Temp",ylab = "Calories",xlab = "Body_Temp",type = "h")
+```
+
+Although the relationship between Calories and Height is a bit less
+clear, it still appears linear. We can proceed with linear regression.
+
+### **Fitting a linear model between Calories vs Body_Temp\$**
+
+```{r echo=TRUE}
+model = df %>%
+  lm(formula =Calories~Body_Temp)
+model %>% summary()
+```
+
+The linear regression model indicates a highly significant and strong
+relationship between Body_Temp and Calories:
+
+Intercept: Predicted Calories when Body_Temp is zero is -2555.75, but
+interpret cautiously.
+
+Body_Temp (Slope): For each one-unit increase in Body_Temp, predicted
+Calories increase by approximately 66.09 units.
+
+Statistical Significance: Both intercept and Body_Temp are highly
+significant (p \< 2e-16).
+
+Model Fit: The model explains about 67.99% of the variability in
+Calories based on the high R-squared value.
+
+Overall Model Significance: The overall model is statistically
+significant, suggesting its usefulness in predicting Calories based on
+Body_Temp.
+
+The linear regression model is highly significant, suggesting a strong
+and meaningful relationship between Body_Temp and Calories. The high
+R-squared value indicates that a substantial portion of the variability
+in Calories is explained by the linear relationship with Body_Temp. This
+model can be used to predict Calories based on body temperature.
+
+Check for homoscedasticity:
+
+Before proceeding with data visualization, we should make sure that our
+models fit the homoscedasticity assumption of the linear model. We
+should check that our model is actually a good fit for the data, and
+that we don't have large variation in the model error, by running this
+code:
+
+```{r echo=TRUE}
+par(mfrow=c(2,2))
+plot(lm(formula =df$Calories~df$Body_Temp))
+```
+
+Based on these residuals, we can say that our model meets the assumption
+of homoscedasticity.
+
+Visualize the result with graph:
+
+```{r echo=TRUE}
+
+Calories.graph<-ggplot(df, aes(x=Calories, y=Body_Temp))+
+ geom_point()
+Calories.graph <- Calories.graph + geom_smooth(method="lm", 
+col="black")
+## `geom_smooth()` using formula = 'y ~ x'
+Calories.graph +
+ theme_bw() +
+ labs(title = "Reported Calories as a function of Body_Temp",
+ x = "Body_Temp",
+ y = "Calories score")+ 
+annotate(geom="text",label="Calories = -2555.7468 + (66.0901*Body_Temp)")
+```
+
+We found a significant relationship between Calories and Body
+temperature, with a 66.0901-unit increase in reported Calories for every
+1 unit increase in Body temperature.
+
+\*\CONCLUSION
+
+Practical Recommendations:
+
+For individuals aiming to maximize calorie burn, focusing on activities
+with longer durations, increased heart rates, and elevated body
+temperatures could prove beneficial
